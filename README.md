@@ -13,7 +13,7 @@ go build
 _(Not recommended: because it takes a few minutes)_
 
   - Docker installed is required
-  - Update TOMOX_BOT_PACKAGE in build.sh, point to your remote package
+  - Update TOMOX_BOT_PACKAGE, TOMOX_BOT_VERSION in build.sh, point to your remote package
 ```bash
 ./build.sh
 ```
