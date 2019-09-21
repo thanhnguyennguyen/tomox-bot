@@ -7,7 +7,7 @@ This bot helps to increase liquidity for the market, not for taking profit
 
 - Build binary for your current platform 
 ```bash
-go build -v -o bot
+go build
 ```
 - Build binaries for multiple platforms<br/> 
 _(Not recommended: because it takes a few minutes)_
