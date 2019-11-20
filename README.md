@@ -1,5 +1,5 @@
 # tomox-bot
-send orders to tomox protocol
+send orders to tomox rpc
 
 ## Build
 ```
