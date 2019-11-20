@@ -2,8 +2,10 @@
 send orders to tomox protocol
 
 ## Build
+```
 go get github.com/tomochain/tomochain
 go build bot.go
+```
 
 ## Run
  ```
