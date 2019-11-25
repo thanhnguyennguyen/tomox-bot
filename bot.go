@@ -65,7 +65,7 @@ func buildOrder(userAddr string, nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("price %v  ", order.Price)
+	fmt.Printf("price %v  . Side: %s", order.Price, order.Side)
 	return order
 }
 
