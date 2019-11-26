@@ -65,7 +65,8 @@ func buildOrder(userAddr string, nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("price %v  . Side: %s . Pair: %s . ToExchange: %s . ", order.Price, order.Side, order.PairName, order.ExchangeAddress.Hex())
+	fmt.Printf("price %v . Pair: %s . ToExchange: %s . Nonce: %d . Side: %s", order.Price, order.PairName, order.ExchangeAddress.Hex(), order.Nonce.Uint64(), order.Side)
+	fmt.Println()
 	return order
 }
 
@@ -85,8 +86,6 @@ func testCreateOrder(userAddr, pk string, nonce *big.Int) {
 		V: signatureBytes[64] + 27,
 	}
 	order.Signature = sig
-
-	fmt.Println("nonce: ", nonce.Uint64())
 
 
 	//create topic
