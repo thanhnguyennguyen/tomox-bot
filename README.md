@@ -11,7 +11,7 @@ send orders to tomox rpc
  cp .env.sample .env 
  # update .env file 
  
- # see all binaries at /build, copy binary correspoding your os
+ # see all binaries at /build, copy binary corresponding your os
  cp build/tomox-bot-linux-amd64 ./bot
  
  # run bot 
