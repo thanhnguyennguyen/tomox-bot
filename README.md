@@ -9,7 +9,12 @@ send orders to tomox rpc
 ## Run
  ```
  cp .env.sample .env 
- # update .env file  
+ # update .env file 
+ 
+ # see all binaries at /build, copy binary correspoding your os
+ cp build/tomox-bot-linux-amd64 ./bot
+ 
+ # run bot 
  ./bot 6
 # send tomox orders starting with orderNonce = 6
  ```
