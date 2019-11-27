@@ -13,12 +13,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tomochain/tomochain/common"
 	"github.com/tomochain/tomochain/rpc"
+	"github.com/joho/godotenv"
 )
-const RPC_ENDPOINT = "http://127.0.0.1:1545"
+
 
 type OrderMsg struct {
 	AccountNonce    uint64         `json:"nonce"    gencodec:"required"`
@@ -42,24 +44,35 @@ type OrderMsg struct {
 	Hash common.Hash `json:"hash"`
 }
 
-func buildOrder(userAddr string, nonce *big.Int) *tomox_state.OrderItem {
-	var ether = big.NewInt(1000000000000000000)
-	var bitUnit = big.NewInt(1000000)
+func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
+	baseDecimal, err := strconv.Atoi(os.Getenv("BASE_DECIMAL"))
+	if err != nil {
+		panic(fmt.Errorf("fail to get BASE_DECIMAL . Err: %v", err))
+	}
+	quantityDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(baseDecimal)), nil)
+	quoteDecimal, err := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
+	if err != nil {
+		panic(fmt.Errorf("fail to get QUOTE_DECIMAL . Err: %v", err))
+	}
+	priceDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(quoteDecimal)), nil)
 	rand.Seed(time.Now().UTC().UnixNano())
 	lstBuySell := []string{"BUY", "SELL"}
-	tomoPrice, _ := getPrice("tomochain", "btc")
-	btcPrice := int(1 / tomoPrice)
+	coingectkoPrice, _ := getPrice(os.Getenv("COINGECKO_PRICE_BASE_SYMBOL"), os.Getenv("COINGECKO_PRICE_QUOTE_SYMBOL"))
+	price := coingectkoPrice
+	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
+		price = 1 / coingectkoPrice
+	}
 	order := &tomox_state.OrderItem{
-		Quantity:        big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), bitUnit),
-		Price:           big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(100)+btcPrice)), ether),
-		ExchangeAddress: common.HexToAddress("0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"),
-		UserAddress:     common.HexToAddress(userAddr),
-		BaseToken:       common.HexToAddress("0x4d7eA2cE949216D6b120f3AA10164173615A2b6C"),
-		QuoteToken:      common.HexToAddress(common.TomoNativeAddress),
+		Quantity:        big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal),
+		Price:           big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(100)+int(price))), priceDecimal),
+		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
+		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
+		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")), // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
+		QuoteToken:      common.HexToAddress(os.Getenv("QUOTE_TOKEN")), // common.TomoNativeAddress
 		Status:          tomox.OrderStatusNew,
 		Side:            lstBuySell[rand.Int()%len(lstBuySell)],
 		Type:            tomox_state.Limit,
-		PairName:        "BTC/TOMO",
+		PairName:        os.Getenv("PAIR_NAME"),
 		FilledAmount:    new(big.Int).SetUint64(0),
 		Nonce:           nonce,
 		CreatedAt:       time.Now(),
@@ -70,11 +83,11 @@ func buildOrder(userAddr string, nonce *big.Int) *tomox_state.OrderItem {
 	return order
 }
 
-func testCreateOrder(userAddr, pk string, nonce *big.Int) {
-	order := buildOrder(userAddr, nonce)
+func sendOrder(nonce *big.Int) {
+	order := buildOrder(nonce)
 	order.Hash = ComputeHash(order)
 
-	privKey, _ := crypto.HexToECDSA(pk)
+	privKey, _ := crypto.HexToECDSA(os.Getenv("PK"))
 	message := crypto.Keccak256(
 		[]byte("\x19Ethereum Signed Message:\n32"),
 		order.Hash.Bytes(),
@@ -89,7 +102,7 @@ func testCreateOrder(userAddr, pk string, nonce *big.Int) {
 
 
 	//create topic
-	rpcClient, err := rpc.DialHTTP(RPC_ENDPOINT)
+	rpcClient, err := rpc.DialHTTP(os.Getenv("RPC_ENDPOINT"))
 	defer rpcClient.Close()
 	if err != nil {
 		fmt.Println("rpc.DialHTTP failed", "err", err)
@@ -123,12 +136,14 @@ func testCreateOrder(userAddr, pk string, nonce *big.Int) {
 }
 
 func main() {
-	userAddr := os.Args[1]
-	pk := os.Args[2]
-	startNonce, _ := strconv.Atoi(os.Args[3])
-	breakTime, _ := strconv.Atoi(os.Args[4])
+	err := godotenv.Load()
+	if err != nil {
+		panic("Error loading .env file")
+	}
+	startNonce, _ := strconv.Atoi(os.Args[1])
+	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
 	for {
-		testCreateOrder(userAddr, pk, new(big.Int).SetUint64(uint64(startNonce)))
+		sendOrder(new(big.Int).SetUint64(uint64(startNonce)))
 		time.Sleep(time.Duration(int64(breakTime)) * time.Millisecond)
 		startNonce++
 	}
