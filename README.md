@@ -3,7 +3,7 @@ send orders to tomox rpc
 
 ## Build
 ```
-go get && go build bot.go
+./build.sh
 ```
 
 ## Run
