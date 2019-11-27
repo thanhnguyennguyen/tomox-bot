@@ -57,7 +57,7 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 	priceDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(quoteDecimal)), nil)
 	rand.Seed(time.Now().UTC().UnixNano())
 	lstBuySell := []string{"BUY", "SELL"}
-	coingectkoPrice, _ := getPrice(os.Getenv("COINGECKO_PRICE_BASE_SYMBOL"), os.Getenv("COINGECKO_PRICE_QUOTE_SYMBOL"))
+	coingectkoPrice, _ := getPrice(os.Getenv("COINGECKO_PRICE_BASE_ID"), os.Getenv("COINGECKO_PRICE_QUOTE_ID"))
 	price := coingectkoPrice
 	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
 		price = 1 / coingectkoPrice
