@@ -15,8 +15,7 @@ send orders to tomox rpc
  cp build/tomox-bot-linux-amd64 ./bot
  
  # run bot 
- ./bot 6
-# send tomox orders starting with orderNonce = 6
+ ./bot
  ```
  Argument: 
  - StartNonce

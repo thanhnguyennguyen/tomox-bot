@@ -83,7 +83,7 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 	return order
 }
 
-func sendOrder(nonce *big.Int) {
+func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 	order := buildOrder(nonce)
 	order.Hash = ComputeHash(order)
 
@@ -99,15 +99,6 @@ func sendOrder(nonce *big.Int) {
 		V: signatureBytes[64] + 27,
 	}
 	order.Signature = sig
-
-
-	//create topic
-	rpcClient, err := rpc.DialHTTP(os.Getenv("RPC_ENDPOINT"))
-	defer rpcClient.Close()
-	if err != nil {
-		fmt.Println("rpc.DialHTTP failed", "err", err)
-		os.Exit(1)
-	}
 
 	orderMsg := OrderMsg{
 		AccountNonce:    order.Nonce.Uint64(),
@@ -128,7 +119,7 @@ func sendOrder(nonce *big.Int) {
 	var result interface{}
 
 
-	err = rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
+	err := rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
 	if err != nil {
 		fmt.Println("rpcClient.Call tomox_sendOrder failed", "err", err)
 		os.Exit(1)
@@ -140,13 +131,23 @@ func main() {
 	if err != nil {
 		panic("Error loading .env file")
 	}
-	startNonce := int(0)
-	if len(os.Args) > 1 {
-		startNonce, _ = strconv.Atoi(os.Args[1])
+	rpcClient, err := rpc.DialHTTP(os.Getenv("RPC_ENDPOINT"))
+	defer rpcClient.Close()
+	if err != nil {
+		fmt.Println("rpc.DialHTTP failed", "err", err)
+		os.Exit(1)
 	}
+	var result interface{}
+	err = rpcClient.Call(&result, "tomox_getOrderCount", os.Getenv("USER_ADDRESS"))
+	if err != nil {
+		fmt.Println("rpcClient.Call tomox_getOrderCount failed", "err", err)
+		os.Exit(1)
+	}
+	startNonce, _ := strconv.ParseInt(strings.TrimLeft(result.(string), "0x"), 16, 64)
+	fmt.Println("Your current orderNonce: ", startNonce)
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
 	for {
-		sendOrder(new(big.Int).SetUint64(uint64(startNonce)))
+		sendOrder(rpcClient, new(big.Int).SetUint64(uint64(startNonce)))
 		time.Sleep(time.Duration(int64(breakTime)) * time.Millisecond)
 		startNonce++
 	}
