@@ -140,7 +140,10 @@ func main() {
 	if err != nil {
 		panic("Error loading .env file")
 	}
-	startNonce, _ := strconv.Atoi(os.Args[1])
+	startNonce := int(0)
+	if len(os.Args) > 1 {
+		startNonce, _ = strconv.Atoi(os.Args[1])
+	}
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
 	for {
 		sendOrder(new(big.Int).SetUint64(uint64(startNonce)))
