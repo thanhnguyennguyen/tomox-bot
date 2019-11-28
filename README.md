@@ -1,6 +1,8 @@
 # tomox-bot
 send orders to tomox rpc
 
+This bot helps to increase liquidity for the market, not for taking profit
+
 ## Build
 ```
 ./build.sh
