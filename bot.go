@@ -78,7 +78,7 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("price %v . Pair: %s . ToExchange: %s . Nonce: %d . Side: %s", order.Price, order.PairName, order.ExchangeAddress.Hex(), order.Nonce.Uint64(), order.Side)
+	fmt.Printf("Pair: %s . Price %v . Quantity: %v . Nonce: %d . Side: %s", order.PairName, new(big.Int).Div(order.Price, priceDecimal), new(big.Int).Div(order.Quantity, quantityDecimal), order.Nonce.Uint64(), order.Side)
 	fmt.Println()
 	return order
 }
