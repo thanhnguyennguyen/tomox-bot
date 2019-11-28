@@ -4,10 +4,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tomochain/tomochain/crypto"
-	"github.com/tomochain/tomochain/crypto/sha3"
-	"github.com/tomochain/tomochain/tomox"
-	"github.com/tomochain/tomochain/tomox/tomox_state"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -16,11 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tomochain/tomochain/crypto"
+	"github.com/tomochain/tomochain/crypto/sha3"
+	"github.com/tomochain/tomochain/tomox"
+	"github.com/tomochain/tomochain/tomox/tomox_state"
+
+	"github.com/joho/godotenv"
 	"github.com/tomochain/tomochain/common"
 	"github.com/tomochain/tomochain/rpc"
-	"github.com/joho/godotenv"
 )
-
 
 type OrderMsg struct {
 	AccountNonce    uint64         `json:"nonce"    gencodec:"required"`
@@ -63,11 +63,11 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		price = 1 / coingectkoPrice
 	}
 	order := &tomox_state.OrderItem{
-		Quantity:        big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal),
+		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal), big.NewInt(100)),
 		Price:           big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(100)+int(price))), priceDecimal),
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
-		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")), // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
+		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")),  // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
 		QuoteToken:      common.HexToAddress(os.Getenv("QUOTE_TOKEN")), // common.TomoNativeAddress
 		Status:          tomox.OrderStatusNew,
 		Side:            lstBuySell[rand.Int()%len(lstBuySell)],
@@ -78,7 +78,7 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("Pair: %s . Price %v . Quantity: %v . Nonce: %d . Side: %s", order.PairName, new(big.Int).Div(order.Price, priceDecimal), new(big.Int).Div(order.Quantity, quantityDecimal), order.Nonce.Uint64(), order.Side)
+	fmt.Printf("Pair: %s . Price %v . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, new(big.Int).Div(order.Price, priceDecimal), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
 	fmt.Println()
 	return order
 }
@@ -117,7 +117,6 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 		S:               new(big.Int).SetBytes(signatureBytes[32:64]),
 	}
 	var result interface{}
-
 
 	err := rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
 	if err != nil {
