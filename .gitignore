@@ -3,4 +3,4 @@ bot
 .idea
 devnet
 testnet
-build
+build/
