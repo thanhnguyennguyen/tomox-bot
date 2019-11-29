@@ -23,3 +23,5 @@ This bot helps to increase liquidity for the market, not for taking profit
  - StartNonce
 
  
+## Download binaries
+[https://github.com/thanhnguyennguyen/tomox-bot/releases](https://github.com/thanhnguyennguyen/tomox-bot/releases)
