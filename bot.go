@@ -62,9 +62,11 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
 		price = 1 / coingectkoPrice
 	}
+	randomPriceWithSixDecimal := int64((1 + float64(rand.Intn(10))/1000)*float64(price)*1000000) // 0 - 1% real price
+	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPriceWithSixDecimal), priceDecimal), big.NewInt(1000000))
 	order := &tomox_state.OrderItem{
 		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal), big.NewInt(100)),
-		Price:           big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(100)+int(price))), priceDecimal),
+		Price:           pricepoint,
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
 		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")),  // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
@@ -78,7 +80,7 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("Pair: %s . Price %v . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, new(big.Int).Div(order.Price, priceDecimal), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
+	fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64()) / 1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
 	fmt.Println()
 	return order
 }
