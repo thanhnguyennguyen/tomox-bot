@@ -196,9 +196,9 @@ func main() {
 	// param 1: string "cancel"
 	// param 2: uint64 orderId
 	// param 3: hash
-	if os.Args[0] == "cancel" && len(os.Args) > 3 {
-		orderId, _ := strconv.Atoi(os.Args[1])
-		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[2]))
+	if os.Args[1] == "cancel" && len(os.Args) == 4 {
+		orderId, _ := strconv.Atoi(os.Args[2])
+		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[3]))
 		return
 	}
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
