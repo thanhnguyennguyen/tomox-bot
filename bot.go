@@ -44,7 +44,7 @@ type OrderMsg struct {
 	Hash common.Hash `json:"hash"`
 }
 
-func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
+func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	baseDecimal, err := strconv.Atoi(os.Getenv("BASE_DECIMAL"))
 	if err != nil {
 		panic(fmt.Errorf("fail to get BASE_DECIMAL . Err: %v", err))
@@ -71,7 +71,6 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
 		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")),  // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
 		QuoteToken:      common.HexToAddress(os.Getenv("QUOTE_TOKEN")), // common.TomoNativeAddress
-		Status:          tomox.OrderStatusNew,
 		Side:            lstBuySell[rand.Int()%len(lstBuySell)],
 		Type:            tomox_state.Limit,
 		PairName:        os.Getenv("PAIR_NAME"),
@@ -80,13 +79,18 @@ func buildOrder(nonce *big.Int) *tomox_state.OrderItem {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64()) / 1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
+	if isCancel {
+		order.Status = tomox.OrderStatusCancelled
+	} else {
+		order.Status = tomox.OrderStatusNew
+		fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64()) / 1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
+	}
 	fmt.Println()
 	return order
 }
 
 func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
-	order := buildOrder(nonce)
+	order := buildOrder(nonce, false)
 	order.Hash = ComputeHash(order)
 
 	privKey, _ := crypto.HexToECDSA(os.Getenv("PK"))
@@ -128,10 +132,11 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 }
 
 func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash) {
-	order := buildOrder(nonce)
+	order := buildOrder(nonce, true)
 	order.Status = tomox.OrderStatusCancelled
 	order.OrderID = orderId
 	order.Hash = hash
+	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s .", orderId, hash.Hex())
 	newHash := ComputeHash(order)
 
 	privKey, _ := crypto.HexToECDSA(os.Getenv("PK"))
@@ -196,7 +201,7 @@ func main() {
 	// param 1: string "cancel"
 	// param 2: uint64 orderId
 	// param 3: hash
-	if os.Args[1] == "cancel" && len(os.Args) == 4 {
+	if len(os.Args) == 4 && os.Args[1] == "cancel" {
 		orderId, _ := strconv.Atoi(os.Args[2])
 		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[3]))
 		return
