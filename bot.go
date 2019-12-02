@@ -62,7 +62,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
 		price = 1 / coingectkoPrice
 	}
-	randomPriceWithSixDecimal := int64((1 + float64(rand.Intn(10))/1000)*float64(price)*1000000) // 0 - 1% real price
+	randomPriceWithSixDecimal := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * 1000000) // 0 - 1% real price
 	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPriceWithSixDecimal), priceDecimal), big.NewInt(1000000))
 	order := &tomox_state.OrderItem{
 		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal), big.NewInt(100)),
@@ -83,7 +83,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		order.Status = tomox.OrderStatusCancelled
 	} else {
 		order.Status = tomox.OrderStatusNew
-		fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64()) / 1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64()) / 100, order.Nonce.Uint64(), order.Side)
+		fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64())/1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64())/100, order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
 	return order
@@ -115,6 +115,7 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 		BaseToken:       order.BaseToken,
 		QuoteToken:      order.QuoteToken,
 		Status:          order.Status,
+		Hash:            order.Hash,
 		Side:            order.Side,
 		Type:            order.Type,
 		PairName:        order.PairName,
@@ -134,9 +135,10 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash) {
 	order := buildOrder(nonce, true)
 	order.Status = tomox.OrderStatusCancelled
-	order.OrderID = orderId
 	order.Hash = hash
+	order.OrderID = orderId
 	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s .", orderId, hash.Hex())
+	fmt.Println()
 	newHash := ComputeHash(order)
 
 	privKey, _ := crypto.HexToECDSA(os.Getenv("PK"))
@@ -154,19 +156,17 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash com
 
 	orderMsg := OrderMsg{
 		AccountNonce:    order.Nonce.Uint64(),
-		Quantity:        order.Quantity,
-		Price:           order.Price,
 		ExchangeAddress: order.ExchangeAddress,
 		UserAddress:     order.UserAddress,
 		BaseToken:       order.BaseToken,
 		QuoteToken:      order.QuoteToken,
 		Status:          tomox.OrderStatusCancelled,
+		Hash:            hash,
 		Side:            order.Side,
-		Type:            order.Type,
-		PairName:        order.PairName,
 		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
 		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
 		S:               new(big.Int).SetBytes(signatureBytes[32:64]),
+		OrderID:         orderId,
 	}
 	var result interface{}
 
