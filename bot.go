@@ -132,7 +132,7 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 	}
 }
 
-func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash) {
+func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash, price *big.Int) {
 	order := buildOrder(nonce, true)
 	order.Status = tomox.OrderStatusCancelled
 	order.Hash = hash
@@ -162,6 +162,7 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash com
 		QuoteToken:      order.QuoteToken,
 		Status:          tomox.OrderStatusCancelled,
 		Hash:            hash,
+		Price:           price,
 		Side:            order.Side,
 		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
 		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
@@ -201,9 +202,11 @@ func main() {
 	// param 1: string "cancel"
 	// param 2: uint64 orderId
 	// param 3: hash
-	if len(os.Args) == 4 && os.Args[1] == "cancel" {
+	// param 4: price
+	if len(os.Args) == 5 && os.Args[1] == "cancel" {
 		orderId, _ := strconv.Atoi(os.Args[2])
-		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[3]))
+		price, _ :=  new(big.Int).SetString(os.Args[4], 10)
+		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[3]),price)
 		return
 	}
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
