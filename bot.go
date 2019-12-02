@@ -127,6 +127,51 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 	}
 }
 
+func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash) {
+	order := buildOrder(nonce)
+	order.Status = tomox.OrderStatusCancelled
+	order.OrderID = orderId
+	order.Hash = hash
+	newHash := ComputeHash(order)
+
+	privKey, _ := crypto.HexToECDSA(os.Getenv("PK"))
+	message := crypto.Keccak256(
+		[]byte("\x19Ethereum Signed Message:\n32"),
+		newHash.Bytes(),
+	)
+	signatureBytes, _ := crypto.Sign(message, privKey)
+	sig := &tomox_state.Signature{
+		R: common.BytesToHash(signatureBytes[0:32]),
+		S: common.BytesToHash(signatureBytes[32:64]),
+		V: signatureBytes[64] + 27,
+	}
+	order.Signature = sig
+
+	orderMsg := OrderMsg{
+		AccountNonce:    order.Nonce.Uint64(),
+		Quantity:        order.Quantity,
+		Price:           order.Price,
+		ExchangeAddress: order.ExchangeAddress,
+		UserAddress:     order.UserAddress,
+		BaseToken:       order.BaseToken,
+		QuoteToken:      order.QuoteToken,
+		Status:          tomox.OrderStatusCancelled,
+		Side:            order.Side,
+		Type:            order.Type,
+		PairName:        order.PairName,
+		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
+		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
+		S:               new(big.Int).SetBytes(signatureBytes[32:64]),
+	}
+	var result interface{}
+
+	err := rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
+	if err != nil {
+		fmt.Println("cancel tomox_sendOrder failed", "err", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -146,6 +191,16 @@ func main() {
 	}
 	startNonce, _ := strconv.ParseInt(strings.TrimLeft(result.(string), "0x"), 16, 64)
 	fmt.Println("Your current orderNonce: ", startNonce)
+
+	// cancel order
+	// param 1: string "cancel"
+	// param 2: uint64 orderId
+	// param 3: hash
+	if os.Args[0] == "cancel" && len(os.Args) > 3 {
+		orderId, _ := strconv.Atoi(os.Args[1])
+		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[2]))
+		return
+	}
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
 	for {
 		sendOrder(rpcClient, new(big.Int).SetUint64(uint64(startNonce)))
@@ -169,21 +224,30 @@ func getPrice(base, quote string) (float32, error) {
 
 func ComputeHash(item *tomox_state.OrderItem) common.Hash {
 	sha := sha3.NewKeccak256()
-	sha.Write(item.ExchangeAddress.Bytes())
-	sha.Write(item.UserAddress.Bytes())
-	sha.Write(item.BaseToken.Bytes())
-	sha.Write(item.QuoteToken.Bytes())
-	sha.Write(common.BigToHash(item.Quantity).Bytes())
-	if item.Price != nil {
-		sha.Write(common.BigToHash(item.Price).Bytes())
-	}
-	if item.Side == tomox_state.Bid {
-		sha.Write(common.BigToHash(big.NewInt(0)).Bytes())
+	if item.Status == tomox.OrderStatusCancelled {
+		sha.Write(item.Hash.Bytes())
+		sha.Write(common.BigToHash(big.NewInt(int64(item.Nonce.Uint64()))).Bytes())
+		sha.Write(item.UserAddress.Bytes())
+		sha.Write(common.BigToHash(big.NewInt(int64(item.OrderID))).Bytes())
+		sha.Write([]byte(item.Status))
+		sha.Write(item.ExchangeAddress.Bytes())
 	} else {
-		sha.Write(common.BigToHash(big.NewInt(1)).Bytes())
+		sha.Write(item.ExchangeAddress.Bytes())
+		sha.Write(item.UserAddress.Bytes())
+		sha.Write(item.BaseToken.Bytes())
+		sha.Write(item.QuoteToken.Bytes())
+		sha.Write(common.BigToHash(item.Quantity).Bytes())
+		if item.Price != nil {
+			sha.Write(common.BigToHash(item.Price).Bytes())
+		}
+		if item.Side == tomox_state.Bid {
+			sha.Write(common.BigToHash(big.NewInt(0)).Bytes())
+		} else {
+			sha.Write(common.BigToHash(big.NewInt(1)).Bytes())
+		}
+		sha.Write([]byte(item.Status))
+		sha.Write([]byte(item.Type))
+		sha.Write(common.BigToHash(item.Nonce).Bytes())
 	}
-	sha.Write([]byte(item.Status))
-	sha.Write([]byte(item.Type))
-	sha.Write(common.BigToHash(item.Nonce).Bytes())
 	return common.BytesToHash(sha.Sum(nil))
 }
