@@ -45,16 +45,16 @@ type OrderMsg struct {
 }
 
 func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
-	baseDecimal, err := strconv.Atoi(os.Getenv("BASE_DECIMAL"))
+	b, err := strconv.Atoi(os.Getenv("BASE_DECIMAL"))
 	if err != nil {
 		panic(fmt.Errorf("fail to get BASE_DECIMAL . Err: %v", err))
 	}
-	quantityDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(baseDecimal)), nil)
-	quoteDecimal, err := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
+	baseDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(b)), nil)
+	q, err := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
 	if err != nil {
 		panic(fmt.Errorf("fail to get QUOTE_DECIMAL . Err: %v", err))
 	}
-	priceDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(quoteDecimal)), nil)
+	quoteDecimal := new(big.Int).SetUint64(0).Exp(big.NewInt(10), big.NewInt(int64(q)), nil)
 	rand.Seed(time.Now().UTC().UnixNano())
 	lstBuySell := []string{"BUY", "SELL"}
 	coingectkoPrice, _ := getPrice(os.Getenv("COINGECKO_PRICE_BASE_ID"), os.Getenv("COINGECKO_PRICE_QUOTE_ID"))
@@ -62,10 +62,12 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
 		price = 1 / coingectkoPrice
 	}
-	randomPriceWithSixDecimal := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * 1000000) // 0 - 1% real price
-	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPriceWithSixDecimal), priceDecimal), big.NewInt(1000000))
+	p, _ := strconv.Atoi(os.Getenv("PRICE_DECIMAL"))
+	priceDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(p)), big.NewInt(0))
+	randomPrice := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * float64(priceDecimal.Int64())) // 0 - 1% real price
+	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPrice), quoteDecimal), priceDecimal)
 	order := &tomox_state.OrderItem{
-		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), quantityDecimal), big.NewInt(100)),
+		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), baseDecimal), big.NewInt(100)),
 		Price:           pricepoint,
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
@@ -83,7 +85,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		order.Status = tomox.OrderStatusCancelled
 	} else {
 		order.Status = tomox.OrderStatusNew
-		fmt.Printf("Pair: %s . Price %0.6f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, big.NewInt(1000000)), priceDecimal).Uint64())/1000000, float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), quantityDecimal).Uint64())/100, order.Nonce.Uint64(), order.Side)
+		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), baseDecimal).Uint64())/100, order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
 	return order
@@ -139,7 +141,8 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	baseToken := os.Getenv("BASE_TOKEN")
 	quoteToken := os.Getenv("QUOTE_TOKEN")
 	d, _ := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
-	d = d - 6 // because we display with accuracy: six decimal
+	priceDecimal, _ := strconv.Atoi(os.Getenv("PRICE_DECIMAL"))
+	d = d - priceDecimal
 	quoteDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(d)), big.NewInt(0))
 	// getOrderById
 	var res interface{}
