@@ -132,13 +132,31 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 	}
 }
 
-func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash common.Hash, price *big.Int, side string) {
+func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	order := buildOrder(nonce, true)
 	order.Status = tomox.OrderStatusCancelled
-	order.Hash = hash
 	order.OrderID = orderId
+	baseToken := os.Getenv("BASE_TOKEN")
+	quoteToken := os.Getenv("QUOTE_TOKEN")
+	d, _ := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
+	d = d - 6 // because we display with accuracy: six decimal
+	quoteDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(d)), big.NewInt(0))
+	// getOrderById
+	var res interface{}
+	err := rpcClient.Call(&res, "tomox_getOrderById", baseToken, quoteToken, orderId)
+	if err != nil {
+		fmt.Println("cancel order: tomox_getOrderById failed", "err", err)
+		os.Exit(1)
+	}
+	originOrder := res.(map[string]interface{})
+	hash := common.HexToHash(originOrder["hash"].(string))
+	side := originOrder["side"].(string)
+	p := originOrder["price"].(float64) / float64(quoteDecimal.Uint64())
+	price := new(big.Int).SetUint64(uint64(p))
+	price = price.Mul(price, quoteDecimal)
+	order.Hash = hash
 	order.Side = side
-	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s .", orderId, hash.Hex())
+	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s . Side: %s . Price: %v", orderId, hash.Hex(), side, price)
 	fmt.Println()
 	newHash := ComputeHash(order)
 
@@ -172,7 +190,7 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64, hash com
 	}
 	var result interface{}
 
-	err := rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
+	err = rpcClient.Call(&result, "tomox_sendOrder", orderMsg)
 	if err != nil {
 		fmt.Println("cancel tomox_sendOrder failed", "err", err)
 		os.Exit(1)
@@ -202,13 +220,9 @@ func main() {
 	// cancel order
 	// param 1: string "cancel"
 	// param 2: uint64 orderId
-	// param 3: hash
-	// param 4: price
-	if len(os.Args) == 6 && os.Args[1] == "cancel" {
+	if len(os.Args) > 2 && os.Args[1] == "cancel" {
 		orderId, _ := strconv.Atoi(os.Args[2])
-		price, _ :=  new(big.Int).SetString(os.Args[4], 10)
-		side := os.Args[5]
-		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId), common.HexToHash(os.Args[3]), price, side)
+		cancelOrder(rpcClient, big.NewInt(startNonce), uint64(orderId))
 		return
 	}
 	breakTime, _ := strconv.Atoi(os.Getenv("BREAK_TIME"))
