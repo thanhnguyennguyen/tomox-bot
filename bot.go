@@ -62,12 +62,14 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	if inverse := os.Getenv("PRICE_INVERSE"); strings.ToLower(inverse) == "yes" || strings.ToLower(inverse) == "true" {
 		price = 1 / coingectkoPrice
 	}
+	quan, _ := strconv.Atoi(os.Getenv("QUANTITY_DECIMAL"))
+	quantityDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(quan)), big.NewInt(0))
 	p, _ := strconv.Atoi(os.Getenv("PRICE_DECIMAL"))
 	priceDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(p)), big.NewInt(0))
 	randomPrice := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * float64(priceDecimal.Int64())) // 0 - 1% real price
 	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPrice), quoteDecimal), priceDecimal)
 	order := &tomox_state.OrderItem{
-		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), baseDecimal), big.NewInt(100)),
+		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), baseDecimal), quantityDecimal),
 		Price:           pricepoint,
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
@@ -85,7 +87,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		order.Status = tomox.OrderStatusCancelled
 	} else {
 		order.Status = tomox.OrderStatusNew
-		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.2f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, big.NewInt(100)), baseDecimal).Uint64())/100, order.Nonce.Uint64(), order.Side)
+		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.8f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, quantityDecimal), baseDecimal).Uint64())/float64(quantityDecimal.Uint64()), order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
 	return order
