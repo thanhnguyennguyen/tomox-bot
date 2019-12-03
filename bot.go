@@ -69,7 +69,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	randomPrice := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * float64(priceDecimal.Int64())) // 0 - 1% real price
 	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPrice), quoteDecimal), priceDecimal)
 	order := &tomox_state.OrderItem{
-		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(10)+1)), baseDecimal), quantityDecimal),
+		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(20)+2)), baseDecimal), quantityDecimal),
 		Price:           pricepoint,
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
 		UserAddress:     common.HexToAddress(os.Getenv("USER_ADDRESS")),
