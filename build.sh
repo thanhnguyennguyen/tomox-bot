@@ -1,10 +1,10 @@
 export GO111MODULE=off
-rm -rf bin
-go get gopkg.in/natefinch/npipe.v2
-go get -v
-for GOOS in darwin linux windows; do
-    for GOARCH in 386 amd64; do
-        env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=1 go build -v -o bin/tomox-bot-$GOOS-$GOARCH
-    done
-done
+echo Deleting old binaries in 'bin'
+sudo rm -rf bin
+go get -v gopkg.in/natefinch/npipe.v2
+go get -v github.com/karalabe/xgo # Go CGO cross compiler
+go build $GOPATH/src/github.com/karalabe/xgo/xgo.go
+
+
+$GOPATH/src/github.com/karalabe/xgo/xgo -targets="linux/amd64,linux/386,darwin/amd64,darwin/386,windows/amd64,windows/386" -out bin/tomox-bot-v0.7 github.com/thanhnguyennguyen/tomox-bot
 

@@ -5,11 +5,15 @@ This bot helps to increase liquidity for the market, not for taking profit
 
 ## Build
 
-- 
+- Build binary for your current platform 
 ```bash
 go build -v -o tomox-bot
 ```
-
+- Build binaries for multiple platforms
+Docker installed is required (it takes times for the first build because of docker images pulling)
+```bash
+./build.sh
+```
 ## Run
  ```bash
  cp .env.sample .env 
