@@ -142,10 +142,6 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	order.OrderID = orderId
 	baseToken := os.Getenv("BASE_TOKEN")
 	quoteToken := os.Getenv("QUOTE_TOKEN")
-	d, _ := strconv.Atoi(os.Getenv("QUOTE_DECIMAL"))
-	priceDecimal, _ := strconv.Atoi(os.Getenv("PRICE_DECIMAL"))
-	d = d - priceDecimal
-	quoteDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(d)), big.NewInt(0))
 	// getOrderById
 	var res interface{}
 	err := rpcClient.Call(&res, "tomox_getOrderById", baseToken, quoteToken, orderId)
@@ -155,13 +151,8 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	}
 	originOrder := res.(map[string]interface{})
 	hash := common.HexToHash(originOrder["hash"].(string))
-	side := originOrder["side"].(string)
-	p := originOrder["price"].(float64) / float64(quoteDecimal.Uint64())
-	price := new(big.Int).SetUint64(uint64(p))
-	price = price.Mul(price, quoteDecimal)
 	order.Hash = hash
-	order.Side = side
-	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s . Side: %s . Price: %v", orderId, hash.Hex(), side, price)
+	fmt.Printf("Cancel order: OrderId: %d . OrderHash: %s .", orderId, hash.Hex())
 	fmt.Println()
 	newHash := ComputeHash(order)
 
