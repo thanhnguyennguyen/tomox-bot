@@ -14,7 +14,6 @@ import (
 
 	"github.com/tomochain/tomochain/crypto"
 	"github.com/tomochain/tomochain/crypto/sha3"
-	"github.com/tomochain/tomochain/tomox"
 	"github.com/tomochain/tomochain/tomox/tomox_state"
 
 	"github.com/joho/godotenv"
@@ -84,9 +83,9 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		UpdatedAt:       time.Now(),
 	}
 	if isCancel {
-		order.Status = tomox.OrderStatusCancelled
+		order.Status = tomox_state.OrderStatusCancelled
 	} else {
-		order.Status = tomox.OrderStatusNew
+		order.Status = tomox_state.OrderStatusNew
 		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.8f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, quantityDecimal), baseDecimal).Uint64())/float64(quantityDecimal.Uint64()), order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
@@ -138,7 +137,7 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 
 func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	order := buildOrder(nonce, true)
-	order.Status = tomox.OrderStatusCancelled
+	order.Status = tomox_state.OrderStatusCancelled
 	order.OrderID = orderId
 	baseToken := os.Getenv("BASE_TOKEN")
 	quoteToken := os.Getenv("QUOTE_TOKEN")
@@ -175,9 +174,8 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 		UserAddress:     order.UserAddress,
 		BaseToken:       order.BaseToken,
 		QuoteToken:      order.QuoteToken,
-		Status:          tomox.OrderStatusCancelled,
+		Status:          tomox_state.OrderStatusCancelled,
 		Hash:            hash,
-		Price:           price,
 		Side:            order.Side,
 		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
 		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
@@ -244,7 +242,7 @@ func getPrice(base, quote string) (float32, error) {
 
 func ComputeHash(item *tomox_state.OrderItem) common.Hash {
 	sha := sha3.NewKeccak256()
-	if item.Status == tomox.OrderStatusCancelled {
+	if item.Status == tomox_state.OrderStatusCancelled {
 		sha.Write(item.Hash.Bytes())
 		sha.Write(common.BigToHash(big.NewInt(int64(item.Nonce.Uint64()))).Bytes())
 		sha.Write(item.UserAddress.Bytes())
