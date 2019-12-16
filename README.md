@@ -9,9 +9,10 @@ This bot helps to increase liquidity for the market, not for taking profit
 ```bash
 go build -v -o tomox-bot
 ```
-- Build binaries for multiple platforms (Not recommendd: because it takes a few minutes)
-    Docker installed is required
-    Update TOMOX_BOT_PACKAGE in build.sh, point to your remote package
+- Build binaries for multiple platforms (Not recommended: because it takes a few minutes)
+
+  - Docker installed is required
+  - Update TOMOX_BOT_PACKAGE in build.sh, point to your remote package
 ```bash
 ./build.sh
 ```
