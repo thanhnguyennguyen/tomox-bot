@@ -21,6 +21,11 @@ import (
 	"github.com/tomochain/tomochain/rpc"
 )
 
+const (
+	NEW_ORDER       = "NEW"
+	CANCELLED_ORDER = "CANCELLED"
+)
+
 type OrderMsg struct {
 	AccountNonce    uint64         `json:"nonce"    gencodec:"required"`
 	Quantity        *big.Int       `json:"quantity,omitempty"`
@@ -83,9 +88,9 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		UpdatedAt:       time.Now(),
 	}
 	if isCancel {
-		order.Status = tomox_state.OrderStatusCancelled
+		order.Status = CANCELLED_ORDER
 	} else {
-		order.Status = tomox_state.OrderStatusNew
+		order.Status = NEW_ORDER
 		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.8f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, quantityDecimal), baseDecimal).Uint64())/float64(quantityDecimal.Uint64()), order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
@@ -137,7 +142,7 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 
 func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 	order := buildOrder(nonce, true)
-	order.Status = tomox_state.OrderStatusCancelled
+	order.Status = CANCELLED_ORDER
 	order.OrderID = orderId
 	baseToken := os.Getenv("BASE_TOKEN")
 	quoteToken := os.Getenv("QUOTE_TOKEN")
@@ -174,7 +179,7 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 		UserAddress:     order.UserAddress,
 		BaseToken:       order.BaseToken,
 		QuoteToken:      order.QuoteToken,
-		Status:          tomox_state.OrderStatusCancelled,
+		Status:          CANCELLED_ORDER,
 		Hash:            hash,
 		Side:            order.Side,
 		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
@@ -242,7 +247,7 @@ func getPrice(base, quote string) (float32, error) {
 
 func ComputeHash(item *tomox_state.OrderItem) common.Hash {
 	sha := sha3.NewKeccak256()
-	if item.Status == tomox_state.OrderStatusCancelled {
+	if item.Status == CANCELLED_ORDER {
 		sha.Write(item.Hash.Bytes())
 		sha.Write(common.BigToHash(big.NewInt(int64(item.Nonce.Uint64()))).Bytes())
 		sha.Write(item.UserAddress.Bytes())
