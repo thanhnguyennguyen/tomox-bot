@@ -5,7 +5,6 @@ echo Deleting old binaries in 'bin'
 sudo rm -rf bin
 start=`date +%s`
 
-go get -v gopkg.in/natefinch/npipe.v2
 go get -v github.com/karalabe/xgo # Go CGO cross compiler
 go build $GOPATH/src/github.com/karalabe/xgo/xgo.go
 

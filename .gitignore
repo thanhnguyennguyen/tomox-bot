@@ -6,3 +6,5 @@ testnet
 build/
 bin/
 local/
+xgo
+
