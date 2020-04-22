@@ -1,5 +1,5 @@
 export TOMOX_BOT_PACKAGE=github.com/thanhnguyennguyen/tomox-bot
-export TOMOX_BOT_VERSION=0.7-beta
+export TOMOX_BOT_VERSION=0.8
 export GO111MODULE=off
 echo Deleting old binaries in 'bin'
 sudo rm -rf bin
