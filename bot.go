@@ -14,7 +14,7 @@ import (
 
 	"github.com/tomochain/tomochain/crypto"
 	"github.com/tomochain/tomochain/crypto/sha3"
-	"github.com/tomochain/tomochain/tomox/tomox_state"
+	"github.com/tomochain/tomochain/tomox/tradingstate"
 
 	"github.com/joho/godotenv"
 	"github.com/tomochain/tomochain/common"
@@ -27,9 +27,9 @@ const (
 )
 
 type OrderMsg struct {
-	AccountNonce    uint64         `json:"nonce"    gencodec:"required"`
-	Quantity        *big.Int       `json:"quantity,omitempty"`
-	Price           *big.Int       `json:"price,omitempty"`
+	AccountNonce    string `json:"nonce"    gencodec:"required"`
+	Quantity        string    `json:"quantity,omitempty"`
+	Price           string    `json:"price,omitempty"`
 	ExchangeAddress common.Address `json:"exchangeAddress,omitempty"`
 	UserAddress     common.Address `json:"userAddress,omitempty"`
 	BaseToken       common.Address `json:"baseToken,omitempty"`
@@ -38,17 +38,17 @@ type OrderMsg struct {
 	Side            string         `json:"side,omitempty"`
 	Type            string         `json:"type,omitempty"`
 	PairName        string         `json:"pairName,omitempty"`
-	OrderID         uint64         `json:"orderid,omitempty"`
+	OrderID         string `json:"orderid,omitempty"`
 	// Signature values
-	V *big.Int `json:"v" gencodec:"required"`
-	R *big.Int `json:"r" gencodec:"required"`
-	S *big.Int `json:"s" gencodec:"required"`
+	V string `json:"v" gencodec:"required"`
+	R string `json:"r" gencodec:"required"`
+	S string `json:"s" gencodec:"required"`
 
 	// This is only used when marshaling to JSON.
 	Hash common.Hash `json:"hash"`
 }
 
-func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
+func buildOrder(nonce *big.Int, isCancel bool) *tradingstate.OrderItem {
 	b, err := strconv.Atoi(os.Getenv("BASE_DECIMAL"))
 	if err != nil {
 		panic(fmt.Errorf("fail to get BASE_DECIMAL . Err: %v", err))
@@ -72,7 +72,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 	priceDecimal := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(p)), big.NewInt(0))
 	randomPrice := int64((1 + float64(rand.Intn(10))/1000) * float64(price) * float64(priceDecimal.Int64())) // 0 - 1% real price
 	pricepoint := big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(randomPrice), quoteDecimal), priceDecimal)
-	order := &tomox_state.OrderItem{
+	order := &tradingstate.OrderItem{
 		Quantity:        big.NewInt(0).Div(big.NewInt(0).Mul(big.NewInt(int64(rand.Intn(20)+2)), baseDecimal), quantityDecimal),
 		Price:           pricepoint,
 		ExchangeAddress: common.HexToAddress(os.Getenv("EXCHANGE_ADDRESS")), // "0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e"
@@ -80,8 +80,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		BaseToken:       common.HexToAddress(os.Getenv("BASE_TOKEN")),  // 0x4d7eA2cE949216D6b120f3AA10164173615A2b6C
 		QuoteToken:      common.HexToAddress(os.Getenv("QUOTE_TOKEN")), // common.TomoNativeAddress
 		Side:            lstBuySell[rand.Int()%len(lstBuySell)],
-		Type:            tomox_state.Limit,
-		PairName:        os.Getenv("PAIR_NAME"),
+		Type:            tradingstate.Limit,
 		FilledAmount:    new(big.Int).SetUint64(0),
 		Nonce:           nonce,
 		CreatedAt:       time.Now(),
@@ -91,7 +90,7 @@ func buildOrder(nonce *big.Int, isCancel bool) *tomox_state.OrderItem {
 		order.Status = CANCELLED_ORDER
 	} else {
 		order.Status = NEW_ORDER
-		fmt.Printf("Pair: %s . Price %0.8f . Quantity: %0.8f . Nonce: %d . Side: %s", order.PairName, float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, quantityDecimal), baseDecimal).Uint64())/float64(quantityDecimal.Uint64()), order.Nonce.Uint64(), order.Side)
+		fmt.Printf("Price %0.8f . Quantity: %0.8f . Nonce: %d . Side: %s", float64(new(big.Int).Div(new(big.Int).Mul(order.Price, priceDecimal), quoteDecimal).Uint64())/float64(priceDecimal.Uint64()), float64(new(big.Int).Div(new(big.Int).Mul(order.Quantity, quantityDecimal), baseDecimal).Uint64())/float64(quantityDecimal.Uint64()), order.Nonce.Uint64(), order.Side)
 	}
 	fmt.Println()
 	return order
@@ -107,17 +106,11 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 		order.Hash.Bytes(),
 	)
 	signatureBytes, _ := crypto.Sign(message, privKey)
-	sig := &tomox_state.Signature{
-		R: common.BytesToHash(signatureBytes[0:32]),
-		S: common.BytesToHash(signatureBytes[32:64]),
-		V: signatureBytes[64] + 27,
-	}
-	order.Signature = sig
 
 	orderMsg := OrderMsg{
-		AccountNonce:    order.Nonce.Uint64(),
-		Quantity:        order.Quantity,
-		Price:           order.Price,
+		AccountNonce:    "0x" + order.Nonce.Text(16),
+		Quantity:        "0x" + order.Quantity.Text(16),
+		Price:           "0x" + order.Price.Text(16),
 		ExchangeAddress: order.ExchangeAddress,
 		UserAddress:     order.UserAddress,
 		BaseToken:       order.BaseToken,
@@ -126,10 +119,9 @@ func sendOrder(rpcClient *rpc.Client, nonce *big.Int) {
 		Hash:            order.Hash,
 		Side:            order.Side,
 		Type:            order.Type,
-		PairName:        order.PairName,
-		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
-		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
-		S:               new(big.Int).SetBytes(signatureBytes[32:64]),
+		V:               "0x" + new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)).Text(16),
+		R:               "0x" + new(big.Int).SetBytes(signatureBytes[0:32]).Text(16),
+		S:               "0x" + new(big.Int).SetBytes(signatureBytes[32:64]).Text(16),
 	}
 	var result interface{}
 
@@ -166,15 +158,9 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 		newHash.Bytes(),
 	)
 	signatureBytes, _ := crypto.Sign(message, privKey)
-	sig := &tomox_state.Signature{
-		R: common.BytesToHash(signatureBytes[0:32]),
-		S: common.BytesToHash(signatureBytes[32:64]),
-		V: signatureBytes[64] + 27,
-	}
-	order.Signature = sig
 
 	orderMsg := OrderMsg{
-		AccountNonce:    order.Nonce.Uint64(),
+		AccountNonce:    "0x" + order.Nonce.Text(16),
 		ExchangeAddress: order.ExchangeAddress,
 		UserAddress:     order.UserAddress,
 		BaseToken:       order.BaseToken,
@@ -182,10 +168,10 @@ func cancelOrder(rpcClient *rpc.Client, nonce *big.Int, orderId uint64) {
 		Status:          CANCELLED_ORDER,
 		Hash:            hash,
 		Side:            order.Side,
-		V:               new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)),
-		R:               new(big.Int).SetBytes(signatureBytes[0:32]),
-		S:               new(big.Int).SetBytes(signatureBytes[32:64]),
-		OrderID:         orderId,
+		V:               "0x" + new(big.Int).SetUint64(uint64(signatureBytes[64] + 27)).Text(16),
+		R:               "0x" + new(big.Int).SetBytes(signatureBytes[0:32]).Text(16),
+		S:               "0x" + new(big.Int).SetBytes(signatureBytes[32:64]).Text(16),
+		OrderID:         "0x" + new(big.Int).SetUint64(orderId).Text(16),
 	}
 	var result interface{}
 
@@ -245,7 +231,7 @@ func getPrice(base, quote string) (float32, error) {
 	return data[base][quote], nil
 }
 
-func ComputeHash(item *tomox_state.OrderItem) common.Hash {
+func ComputeHash(item *tradingstate.OrderItem) common.Hash {
 	sha := sha3.NewKeccak256()
 	if item.Status == CANCELLED_ORDER {
 		sha.Write(item.Hash.Bytes())
@@ -263,7 +249,7 @@ func ComputeHash(item *tomox_state.OrderItem) common.Hash {
 		if item.Price != nil {
 			sha.Write(common.BigToHash(item.Price).Bytes())
 		}
-		if item.Side == tomox_state.Bid {
+		if item.Side == tradingstate.Bid {
 			sha.Write(common.BigToHash(big.NewInt(0)).Bytes())
 		} else {
 			sha.Write(common.BigToHash(big.NewInt(1)).Bytes())
