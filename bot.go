@@ -240,6 +240,8 @@ func ComputeHash(item *tradingstate.OrderItem) common.Hash {
 		sha.Write(common.BigToHash(big.NewInt(int64(item.OrderID))).Bytes())
 		sha.Write([]byte(item.Status))
 		sha.Write(item.ExchangeAddress.Bytes())
+		sha.Write(item.BaseToken.Bytes())
+		sha.Write(item.QuoteToken.Bytes())
 	} else {
 		sha.Write(item.ExchangeAddress.Bytes())
 		sha.Write(item.UserAddress.Bytes())
